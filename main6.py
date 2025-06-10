@@ -1,4 +1,4 @@
-# Домашне завдання 5.3 (альтернативний код для випробування)
+# Домашне завдання 5.3 (альтернативний код для пошуку усіх входжень стрічки пошуку)
 
 import timeit
 import random
@@ -31,18 +31,24 @@ def kmp_search(text, pattern):
 
     lps = build_lps(pattern)
     i = j = 0
+    positions = []  # Список для хранения всех индексов вхождений
+
     while i < len(text):
         if pattern[j] == text[i]:
             i += 1
             j += 1
+
         if j == len(pattern):
-            return i - j
+            positions.append(i - j)
+            j = lps[j - 1]  # продолжаем искать дальше
+
         elif i < len(text) and pattern[j] != text[i]:
             if j != 0:
                 j = lps[j - 1]
             else:
                 i += 1
-    return -1
+
+    return positions
 
 # Алгоритм Рабіна-Карпа:
 
@@ -50,21 +56,29 @@ def kmp_search(text, pattern):
 def rabin_karp(text, pattern, d=256, q=101):
     m = len(pattern)
     n = len(text)
-    h = pow(d, m-1, q)
-    p = t = 0
+    if m > n:
+        return []
 
+    h = pow(d, m - 1, q)
+    p = t = 0
+    result = []
+
+    # Вычисляем хеши для pattern и первого окна текста
     for i in range(m):
         p = (d * p + ord(pattern[i])) % q
         t = (d * t + ord(text[i])) % q
 
+    # Основной цикл по тексту
     for s in range(n - m + 1):
-        if p == t:
+        if p == t:  # Возможное совпадение
             if text[s:s + m] == pattern:
-                return s
+                result.append(s)
         if s < n - m:
             t = (d * (t - ord(text[s]) * h) + ord(text[s + m])) % q
-            t = t + q if t < 0 else t
-    return -1
+            if t < 0:
+                t += q
+
+    return result
 
 # Алгоритм Боєра-Мура:
 
@@ -76,20 +90,27 @@ def boyer_moore(text, pattern):
             table[pattern[i]] = i
         return table
 
+    if not pattern or not text or len(pattern) > len(text):
+        return []
+
     bad_char = build_bad_char_table(pattern)
     m, n = len(pattern), len(text)
     s = 0
+    result = []
 
     while s <= n - m:
         j = m - 1
         while j >= 0 and pattern[j] == text[s + j]:
             j -= 1
         if j < 0:
-            return s
+            result.append(s)
+            # Сдвигаем на 1 позицию или по символу после найденного совпадения
+            s += m if s + m < n and pattern[-1] != text[s + m] else 1
         else:
             shift = max(1, j - bad_char.get(text[s + j], -1))
             s += shift
-    return -1
+
+    return result
 
 
 # Підготовка текстів і підрядків:
@@ -216,7 +237,7 @@ plt.show()
 # Исследование на основе выборки из множества строк разной длинны:
 # Задаем границы и интервалы измерений, количество случайных строк для тестов
 pattern_lengths = list(range(10, 100, 5))
-num_samples = 30  # Кол-во подстрок для каждой длины шаблона
+num_samples = 10  # Кол-во подстрок для каждой длины шаблона
 
 # Вычисляем массив средних значений времени поиска для каждой строки одной длинны (для существующих строк в тексте)
 
